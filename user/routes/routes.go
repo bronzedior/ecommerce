@@ -1,10 +1,14 @@
 package routes
 
-import "github.com/gin-gonic/gin"
+import (
+	"user/cmd/user/handler"
 
-func SetupRoutes(router *gin.Engine) {
+	"github.com/gin-gonic/gin"
+)
+
+func SetupRoutes(router *gin.Engine, userHandler handler.UserHandler) {
 	// Public API
-	router.GET("/ping")
+	router.GET("/ping", userHandler.Ping)
 
 	// Private API
 }
