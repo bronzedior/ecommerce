@@ -45,7 +45,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.UserUsecase.GetUserByEmail(param.Email)
+	user, err := h.UserUsecase.GetUserByEmail(c.Request.Context(), param.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error_message": err.Error(),
@@ -60,7 +60,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	err = h.UserUsecase.RegisterUser(&models.User{
+	err = h.UserUsecase.RegisterUser(c.Request.Context(), &models.User{
 		Name:     param.Name,
 		Email:    param.Email,
 		Password: param.Password,

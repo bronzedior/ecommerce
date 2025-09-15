@@ -1,15 +1,16 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"user/models"
 
 	"gorm.io/gorm"
 )
 
-func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
+func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
-	err := r.Database.Where("email = ?", email).Last(&user).Error
+	err := r.Database.WithContext(ctx).Where("email = ?", email).Last(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return &user, nil
@@ -21,8 +22,8 @@ func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) InsertNewUser(user *models.User) (int64, error) {
-	err := r.Database.Create(user).Error
+func (r *UserRepository) InsertNewUser(ctx context.Context, user *models.User) (int64, error) {
+	err := r.Database.WithContext(ctx).Create(user).Error
 	if err != nil {
 		return 0, err
 	}

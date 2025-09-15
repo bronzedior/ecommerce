@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"user/cmd/user/service"
 	"user/infrastructure/log"
 	"user/models"
@@ -19,8 +20,8 @@ func NewUserUsecase(userService service.UserService) *UserUsecase {
 	}
 }
 
-func (uc *UserUsecase) GetUserByEmail(email string) (*models.User, error) {
-	user, err := uc.UserService.GetUserByEmail(email)
+func (uc *UserUsecase) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	user, err := uc.UserService.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +29,7 @@ func (uc *UserUsecase) GetUserByEmail(email string) (*models.User, error) {
 	return user, nil
 }
 
-func (uc *UserUsecase) RegisterUser(user *models.User) error {
+func (uc *UserUsecase) RegisterUser(ctx context.Context, user *models.User) error {
 	hashedPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
@@ -38,7 +39,7 @@ func (uc *UserUsecase) RegisterUser(user *models.User) error {
 	}
 
 	user.Password = hashedPassword
-	_, err = uc.UserService.CreateNewUser(user)
+	_, err = uc.UserService.CreateNewUser(ctx, user)
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
 			"email": user.Email,
