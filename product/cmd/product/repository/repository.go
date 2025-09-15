@@ -1,13 +1,18 @@
 package repository
 
-import "github.com/redis/go-redis/v9"
+import (
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+)
 
 type ProductRepository struct {
-	Redis *redis.Client
+	Database *gorm.DB
+	Redis    *redis.Client
 }
 
-func NewProductRepository(redis *redis.Client) *ProductRepository {
+func NewProductRepository(db *gorm.DB, redis *redis.Client) *ProductRepository {
 	return &ProductRepository{
-		Redis: redis,
+		Database: db,
+		Redis:    redis,
 	}
 }
