@@ -16,10 +16,11 @@ import (
 func main() {
 	cfg := config.LoadConfig()
 	redis := resource.InitRedis(&cfg)
+	db := resource.InitDB(&cfg)
 
 	log.SetupLogger()
 
-	userRepository := repository.NewUserRepository(redis)
+	userRepository := repository.NewUserRepository(db, redis)
 	userService := service.NewUserService(*userRepository)
 	userUsecase := usecase.NewUserUsecase(*userService)
 	userHandler := handler.NewUserHandler(*userUsecase)
