@@ -34,6 +34,15 @@ func (uc *UserUsecase) GetUserByEmail(ctx context.Context, email string) (*model
 	return user, nil
 }
 
+func (uc *UserUsecase) GetUserByUserID(ctx context.Context, userID int64) (*models.User, error) {
+	user, err := uc.UserService.GetUserByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
 func (uc *UserUsecase) RegisterUser(ctx context.Context, user *models.User) error {
 	hashedPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
@@ -59,7 +68,7 @@ func (uc *UserUsecase) RegisterUser(ctx context.Context, user *models.User) erro
 func (uc *UserUsecase) Login(ctx context.Context, param *models.LoginParameter) (string, error) {
 	user, err := uc.UserService.GetUserByEmail(ctx, param.Email)
 	if user.ID == 0 {
-		return "", errors.New("Email not found!")
+		return "", errors.New("email not found")
 	}
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
@@ -75,7 +84,7 @@ func (uc *UserUsecase) Login(ctx context.Context, param *models.LoginParameter) 
 	}
 
 	if !isMatch {
-		return "", errors.New("Email or password mismatched")
+		return "", errors.New("email or password mismatched")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

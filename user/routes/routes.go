@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(router *gin.Engine, userHandler handler.UserHandler) {
+func SetupRoutes(router *gin.Engine, userHandler handler.UserHandler, jwtSecret string) {
 	// Public API
 	router.Use(middleware.RequestLogger())
 	router.GET("/ping", userHandler.Ping)
@@ -15,4 +15,8 @@ func SetupRoutes(router *gin.Engine, userHandler handler.UserHandler) {
 	router.POST("/v1/login", userHandler.Login)
 
 	// Private API
+	authMiddleware := middleware.AuthMiddleware(jwtSecret)
+	private := router.Group("/api")
+	private.Use(authMiddleware)
+	private.GET("/v1/user_info", userHandler.GetUserInfo)
 }
