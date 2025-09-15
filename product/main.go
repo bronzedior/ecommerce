@@ -2,6 +2,10 @@ package main
 
 import (
 	"product/cmd/product/handler"
+	"product/cmd/product/repository"
+	"product/cmd/product/resource"
+	"product/cmd/product/service"
+	"product/cmd/product/usecase"
 	"product/config"
 	"product/infrastructure/log"
 	"product/routes"
@@ -11,10 +15,14 @@ import (
 
 func main() {
 	cfg := config.LoadConfig()
+	redis := resource.InitRedis(&cfg)
 
 	log.SetupLogger()
 
-	productHandler := handler.NewProductHandler()
+	productRepository := repository.NewProductRepository(redis)
+	productService := service.NewProductService(*productRepository)
+	productUsecase := usecase.NewProductUsecase(*productService)
+	productHandler := handler.NewProductHandler(*productUsecase)
 
 	port := cfg.App.Port
 	router := gin.Default()
