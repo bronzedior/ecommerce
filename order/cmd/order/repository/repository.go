@@ -1,13 +1,18 @@
 package repository
 
-import "github.com/redis/go-redis/v9"
+import (
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+)
 
 type OrderRepository struct {
-	Redis *redis.Client
+	Database *gorm.DB
+	Redis    *redis.Client
 }
 
-func NewOrderRepository(redis *redis.Client) *OrderRepository {
+func NewOrderRepository(db *gorm.DB, redis *redis.Client) *OrderRepository {
 	return &OrderRepository{
-		Redis: redis,
+		Database: db,
+		Redis:    redis,
 	}
 }
