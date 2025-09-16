@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"product/cmd/product/repository"
+	"product/infrastructure/log"
 	"product/models"
+
+	"github.com/sirupsen/logrus"
 )
 
 type ProductService struct {
@@ -17,19 +20,65 @@ func NewProductService(ProductRepository repository.ProductRepository) *ProductS
 }
 
 func (s *ProductService) GetProductByID(ctx context.Context, productID int64) (*models.Product, error) {
-	product, err := s.ProductRepository.FindProductByID(ctx, productID)
+	// get from Redis
+	product, err := s.ProductRepository.GetProductByIDFromRedis(ctx, productID)
+	if err != nil {
+		log.Logger.WithFields(logrus.Fields{
+			"productID": productID,
+		}).Errorf("s.ProductRepository.GetProductByIDFromRedis got error %v", err)
+	}
+
+	if product.ID != 0 {
+		return product, nil
+	}
+
+	// get from DB
+	product, err = s.ProductRepository.FindProductByID(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
+
+	ctxConcurrent := context.WithValue(ctx, context.Background(), ctx.Value("request_id"))
+	go func(ctx context.Context, product *models.Product, productID int64) {
+		errConcurrent := s.ProductRepository.SetProductByID(ctx, product, productID)
+		if errConcurrent != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"product": product,
+			}).Errorf("s.ProductRepository.SetProductByID() got error %v", errConcurrent)
+		}
+	}(ctxConcurrent, product, productID)
 
 	return product, nil
 }
 
 func (s *ProductService) GetProductCategoryByID(ctx context.Context, productCategoryID int) (*models.ProductCategory, error) {
-	productCategory, err := s.ProductRepository.FindProductCategoryByID(ctx, productCategoryID)
+	// get from Redis
+	productCategory, err := s.ProductRepository.GetProductCategoryByIDFromRedis(ctx, productCategoryID)
+	if err != nil {
+		log.Logger.WithFields(logrus.Fields{
+			"productCategoryID": productCategoryID,
+		}).Errorf("s.ProductRepository.GetProductCategoryByIDFromRedis got error %v", err)
+	}
+
+	if productCategory.ID != 0 {
+		return productCategory, nil
+	}
+
+	// get from DB
+	productCategory, err = s.ProductRepository.FindProductCategoryByID(ctx, productCategoryID)
 	if err != nil {
 		return nil, err
 	}
+
+	ctxConcurrent := context.WithValue(ctx, context.Background(), ctx.Value("request_id"))
+	go func(ctx context.Context, product *models.ProductCategory, productID int) {
+		errConcurrent := s.ProductRepository.SetProductCategoryByID(ctx, productCategory, productCategoryID)
+		if errConcurrent != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"productCategory": productCategory,
+			}).Errorf("s.ProductRepository.SetProductCategoryByID() got error %v", errConcurrent)
+		}
+	}(ctxConcurrent, productCategory, productCategoryID)
 
 	return productCategory, nil
 }
