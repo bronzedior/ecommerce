@@ -350,3 +350,60 @@ func (h *ProductHandler) Ping(c *gin.Context) {
 		"status": "OK",
 	})
 }
+
+func (h *ProductHandler) SearchProduct(c *gin.Context) {
+	name := c.Query("name")
+	category := c.Query("category")
+
+	minPrice, _ := strconv.ParseFloat(c.Query("minPrice"), 64)
+	maxPrice, _ := strconv.ParseFloat(c.Query("maxPrice"), 64)
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "2"))
+
+	orderBy := c.Query("orderBy")
+	sort := c.Query("sort")
+
+	param := models.SearchProductParameter{
+		Name:     name,
+		Category: category,
+		MinPrice: minPrice,
+		MaxPrice: maxPrice,
+		Page:     page,
+		PageSize: pageSize,
+		OrderBy:  orderBy,
+		Sort:     sort,
+	}
+
+	products, totalCount, err := h.ProductUsecase.SearchProduct(c.Request.Context(), param)
+	if err != nil {
+		log.Logger.WithFields(logrus.Fields{
+			"param": param,
+		}).Errorf("h.ProductUsecase.SearchProduct() got error %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error_message": err,
+		})
+
+		return
+	}
+
+	// next page url
+	totalPages := (totalCount + pageSize - 1) / pageSize
+
+	var nextPageUrl *string
+	if page < totalPages {
+		url := fmt.Sprintf("%s/v1/product/search?name=%s&category=%s&minPrice=%0.f&maxPrice=%0.f&page=%d&pageSize=%d", c.Request.Host, name, category, minPrice, maxPrice, page+1, pageSize)
+		nextPageUrl = &url
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": models.SearchProductResponse{
+			Products:    products,
+			Page:        page,
+			PageSize:    pageSize,
+			TotalCount:  totalCount,
+			TotalPages:  totalPages,
+			NextPageUrl: nextPageUrl,
+		},
+	})
+}
