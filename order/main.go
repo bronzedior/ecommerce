@@ -2,6 +2,10 @@ package main
 
 import (
 	"order/cmd/order/handler"
+	"order/cmd/order/repository"
+	"order/cmd/order/resource"
+	"order/cmd/order/service"
+	"order/cmd/order/usecase"
 	"order/config"
 	"order/infrastructure/log"
 	"order/routes"
@@ -11,10 +15,14 @@ import (
 
 func main() {
 	cfg := config.LoadConfig()
+	redis := resource.InitRedis(&cfg)
 
 	log.SetupLogger()
 
-	orderHandler := handler.NewOrderHandler()
+	orderRepository := repository.NewOrderRepository(redis)
+	orderService := service.NewOrderService(*orderRepository)
+	orderUsecase := usecase.NewOrderUsecase(*orderService)
+	orderHandler := handler.NewOrderHandler(*orderUsecase)
 
 	port := cfg.App.Port
 	router := gin.Default()
