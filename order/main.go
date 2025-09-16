@@ -27,7 +27,7 @@ func main() {
 
 	port := cfg.App.Port
 	router := gin.Default()
-	routes.SetupRoutes(router, *orderHandler)
+	routes.SetupRoutes(router, *orderHandler, cfg.Secret.JWTSecret)
 	router.Run(":" + port)
 
 	log.Logger.Printf("Server running on port: %s", port)
