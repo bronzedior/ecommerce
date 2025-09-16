@@ -6,6 +6,7 @@ import (
 	"product/cmd/product/usecase"
 	"product/infrastructure/log"
 	"product/models"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -19,6 +20,90 @@ func NewProductHandler(productUsecase usecase.ProductUsecase) *ProductHandler {
 	return &ProductHandler{
 		ProductUsecase: productUsecase,
 	}
+}
+
+func (h *ProductHandler) GetProductInfo(c *gin.Context) {
+	productIDstr := c.Param("id")
+
+	productID, err := strconv.ParseInt(productIDstr, 10, 64)
+	if err != nil {
+		log.Logger.WithFields(logrus.Fields{
+			"productID": productIDstr,
+		}).Errorf("strconv.ParseInt got error %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error_message": "Invalid Product ID",
+		})
+
+		return
+	}
+
+	product, err := h.ProductUsecase.GetProductByID(c.Request.Context(), productID)
+	if err != nil {
+		log.Logger.WithFields(logrus.Fields{
+			"productID": productID,
+		}).Errorf("h.ProductUsecase.GetProductByID() got error %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error_message": err,
+		})
+
+		return
+	}
+
+	if product.ID == 0 {
+		log.Logger.WithFields(logrus.Fields{
+			"productID": productID,
+		}).Info("Product ID not found")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error_message": "Product Not Exists",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"product": product,
+	})
+}
+
+func (h *ProductHandler) GetProductCategoryInfo(c *gin.Context) {
+	productCategoryIDstr := c.Param("id")
+
+	productCategoryID, err := strconv.Atoi(productCategoryIDstr)
+	if err != nil {
+		log.Logger.WithFields(logrus.Fields{
+			"productID": productCategoryIDstr,
+		}).Errorf("strconv.atoi got error %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error_message": "Invalid Product ID",
+		})
+
+		return
+	}
+
+	productCategory, err := h.ProductUsecase.GetProductCategoryByID(c.Request.Context(), productCategoryID)
+	if err != nil {
+		log.Logger.WithFields(logrus.Fields{
+			"productCategoryID": productCategory,
+		}).Errorf("h.ProductUsecase.GetProductCategoryByID() got error %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error_message": err,
+		})
+
+		return
+	}
+
+	if productCategory.ID == 0 {
+		log.Logger.WithFields(logrus.Fields{
+			"productCategoryID": productCategoryID,
+		}).Info("Product Category Not Found")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error_message": "Product Category Not Exists",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"productCategory": productCategory,
+	})
 }
 
 func (h *ProductHandler) ProductManagement(c *gin.Context) {
