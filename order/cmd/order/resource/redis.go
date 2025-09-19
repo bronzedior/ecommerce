@@ -18,11 +18,11 @@ func InitRedis(cfg *config.Config) *redis.Client {
 	})
 
 	ctx := context.Background()
-	pingResult, err := RedisClient.Ping(ctx).Result()
+	_, err := RedisClient.Ping(ctx).Result()
 	if err != nil {
-		log.Fatalf("failed to connect to redis: %v", err)
+		log.Fatalf("Failed connect to redis: %v", err)
 	}
 
-	log.Println("Connected to Redis: ", pingResult)
+	log.Println("Connected to Redis")
 	return RedisClient
 }

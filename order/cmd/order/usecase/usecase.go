@@ -107,3 +107,12 @@ func (uc *OrderUsecase) constructOrderDetail(items []models.CheckoutItem) (strin
 
 	return string(productsJSON), string(historyJSON), nil
 }
+
+func (uc *OrderUsecase) GetOrderHistory(ctx context.Context, param models.OrderHistoryParam) ([]models.OrderHistoryResponse, error) {
+	orderHistory, err := uc.OrderService.GetOrderHistoriesByUserID(ctx, param)
+	if err != nil {
+		return nil, err
+	}
+
+	return orderHistory, nil
+}

@@ -20,9 +20,9 @@ type DatabaseConfig struct {
 }
 
 type RedisConfig struct {
-	Host     string `json:"host" validate:"required"`
-	Port     string `json:"port" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Host     string `yaml:"host" validate:"required"`
+	Port     string `yaml:"port" validate:"required"`
+	Password string `yaml:"password" validate:"required"`
 }
 
 type SecretConfig struct {

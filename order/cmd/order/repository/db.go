@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"order/infrastructure/constant"
 	"order/models"
 	"time"
 
@@ -54,6 +56,20 @@ func (r *OrderRepository) SaveIdempotencyToken(ctx context.Context, token string
 	return r.Database.WithContext(ctx).Table("order_request_log").Create(&log).Error
 }
 
+func (r *OrderRepository) UpdateOrderStatus(ctx context.Context, orderID int64, status int) error {
+	err := r.Database.Table("orders").WithContext(ctx).Model(&models.Order{}).
+		Updates(map[string]interface{}{
+			"status":      status,
+			"update_time": time.Now(),
+		}).Where("order_id = ?", orderID).Error
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *OrderRepository) GetOrderInfoByOrderID(ctx context.Context, orderID int64) (models.Order, error) {
 	var result models.Order
 	err := r.Database.Table("orders").WithContext(ctx).Where("order_id = ?", orderID).Find(&result).Error
@@ -72,4 +88,50 @@ func (r *OrderRepository) GetOrderDetailByOrderDetailID(ctx context.Context, ord
 	}
 
 	return result, nil
+}
+
+func (r *OrderRepository) GetOrderHistoriesByUserID(ctx context.Context, param models.OrderHistoryParam) ([]models.OrderHistoryResponse, error) {
+	var results []models.OrderJoinResult
+
+	query := r.Database.WithContext(ctx).
+		Table("orders AS o").
+		Select(`o.id, o.amount, o.total_qty, o.status, o.payment_method, o.shipping_address,
+	        d.products, d.order_history`).
+		Joins("JOIN order_detail d ON o.order_detail_id = d.id").
+		Where("o.user_id = ?", param.UserID)
+
+	if param.Status > 0 {
+		query = query.Where("o.status = ?", param.Status)
+	}
+
+	err := query.
+		Order("o.id DESC").
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Transform to OrderHistoryResponse
+	var response []models.OrderHistoryResponse
+	for _, row := range results {
+		var products []models.CheckoutItem
+		var history []models.StatusHistory
+
+		_ = json.Unmarshal([]byte(row.Products), &products)
+		_ = json.Unmarshal([]byte(row.OrderHistory), &history)
+
+		response = append(response, models.OrderHistoryResponse{
+			OrderID:         row.ID,
+			TotalAmount:     row.Amount,
+			TotalQty:        row.TotalQty,
+			Status:          constant.OrderStatusTranslated[row.Status],
+			PaymentMethod:   row.PaymentMethod,
+			ShippingAddress: row.ShippingAddress,
+			Products:        products,
+			History:         history,
+		})
+	}
+
+	return response, nil
 }

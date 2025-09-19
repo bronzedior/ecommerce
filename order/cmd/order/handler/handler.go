@@ -5,6 +5,7 @@ import (
 	"order/cmd/order/usecase"
 	"order/infrastructure/log"
 	"order/models"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -66,6 +67,40 @@ func (h *OrderHandler) Checkout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"order_id": orderID,
 		"status":   "created",
+	})
+}
+
+func (h *OrderHandler) GetOrderHistory(c *gin.Context) {
+	userIDStr, isExist := c.Get("user_id")
+	if !isExist {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error_message": "Unauthorized",
+		})
+		return
+	}
+
+	userID, ok := userIDStr.(float64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error_message": "Invalid user id",
+		})
+		return
+	}
+
+	status, _ := strconv.Atoi(c.DefaultQuery("status", "0")) // 0 = all
+	orderHistoryParam := models.OrderHistoryParam{
+		UserID: int64(userID),
+		Status: status,
+	}
+
+	histories, err := h.OrderUsecase.GetOrderHistory(c.Request.Context(), orderHistoryParam)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": histories,
 	})
 }
 

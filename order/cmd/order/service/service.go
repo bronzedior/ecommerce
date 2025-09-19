@@ -54,6 +54,15 @@ func (s *OrderService) GetOrderDetailByOrderDetailID(ctx context.Context, orderD
 	return orderDetail, nil
 }
 
+func (s *OrderService) UpdateOrderStatus(ctx context.Context, orderID int64, status int) error {
+	err := s.OrderRepository.UpdateOrderStatus(ctx, orderID, status)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *OrderService) SaveOrderAndOrderDetail(ctx context.Context, order *models.Order, orderDetail *models.OrderDetail) (int64, error) {
 	var orderID int64
 
@@ -79,4 +88,12 @@ func (s *OrderService) SaveOrderAndOrderDetail(ctx context.Context, order *model
 	}
 
 	return orderID, nil
+}
+
+func (s *OrderService) GetOrderHistoriesByUserID(ctx context.Context, param models.OrderHistoryParam) ([]models.OrderHistoryResponse, error) {
+	orderHistories, err := s.OrderRepository.GetOrderHistoriesByUserID(ctx, param)
+	if err != nil {
+		return nil, err
+	}
+	return orderHistories, nil
 }
