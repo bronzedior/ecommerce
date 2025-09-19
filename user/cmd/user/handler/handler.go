@@ -37,11 +37,26 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.UserUsecase.Login(c.Request.Context(), &param)
+	user, err := h.UserUsecase.GetUserByEmail(c.Request.Context(), param.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error_message": err.Error(),
+		})
+		return
+	}
+
+	if user.ID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error_message": "Email not found!",
+		})
+		return
+	}
+
+	token, err := h.UserUsecase.Login(c.Request.Context(), param, user.ID, user.Password)
 	if err != nil {
 		log.Logger.Error(err.Error())
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Email or password mismatch",
+			"error": "Email or password mismatched",
 		})
 
 		return
@@ -57,7 +72,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	if err := c.ShouldBindJSON(&param); err != nil {
 		log.Logger.Info(err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error_message": "Invalid parameter input",
+			"error_message": "Invalid input parameter",
 		})
 		return
 	}
@@ -71,9 +86,9 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	if param.Password != param.ConfirmPassword {
-		log.Logger.Info("Invalid Input")
+		log.Logger.Info("Invalid Credentials")
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error_message": "Password mismatched",
+			"error_message": "Password and Confirm Password Not Match",
 		})
 		return
 	}
@@ -86,7 +101,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	if user != nil && user.ID != 0 {
+	if user.ID != 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error_message": "Email already exists!",
 		})
@@ -96,7 +111,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	err = h.UserUsecase.RegisterUser(c.Request.Context(), &models.User{
 		Name:     param.Name,
 		Email:    param.Email,
-		Password: param.Password,
+		Password: param.Password, // plain text --> hashing password (bcrypt)
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -116,46 +131,8 @@ func (h *UserHandler) Ping(c *gin.Context) {
 	})
 }
 
-// func (h *UserHandler) GetUserInfo(c *gin.Context) {
-// 	userIDStr, isExist := c.Get("user_id")
-// 	if !isExist {
-// 		c.JSON(http.StatusUnauthorized, gin.H{
-// 			"error_message": "Unauthorized",
-// 		})
-// 		return
-// 	}
-
-// 	userID, ok := userIDStr.(float64)
-// 	if !ok {
-// 		c.JSON(http.StatusUnauthorized, gin.H{
-// 			"error_message": "Invalid user id",
-// 		})
-// 		return
-// 	}
-
-// 	user, err := h.UserUsecase.GetUserByUserID(c.Request.Context(), int64(userID))
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{
-// 			"error_message": err.Error(),
-// 		})
-// 		return
-// 	}
-
-// 	if user.ID == 0 {
-// 		c.JSON(http.StatusBadRequest, gin.H{
-// 			"error_message": "User not found!",
-// 		})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"name":  user.Name,
-// 		"email": user.Email,
-// 	})
-// }
-
 func (h *UserHandler) GetUserInfo(c *gin.Context) {
-	userIDVal, isExist := c.Get("user_id")
+	userIDStr, isExist := c.Get("user_id")
 	if !isExist {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error_message": "Unauthorized",
@@ -163,34 +140,32 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 		return
 	}
 
-	switch id := userIDVal.(type) {
-	case string:
-		// If user_id is email
-		user, err := h.UserUsecase.GetUserByEmail(c.Request.Context(), id)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error_message": err.Error()})
-			return
-		}
-		if user == nil || user.ID == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error_message": "User not found!"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"name": user.Name, "email": user.Email})
-
-		// case int64:
-		// 	// If user_id is numeric ID
-		// 	user, err := h.UserUsecase.GetUserByUserID(c.Request.Context(), id)
-		// 	if err != nil {
-		// 		c.JSON(http.StatusInternalServerError, gin.H{"error_message": err.Error()})
-		// 		return
-		// 	}
-		// 	if user == nil || user.ID == 0 {
-		// 		c.JSON(http.StatusNotFound, gin.H{"error_message": "User not found!"})
-		// 		return
-		// 	}
-		// 	c.JSON(http.StatusOK, gin.H{"name": user.Name, "email": user.Email})
-
-		// default:
-		// 	c.JSON(http.StatusUnauthorized, gin.H{"error_message": "Invalid user_id type"})
+	userID, ok := userIDStr.(float64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error_message": "Invalid user id",
+		})
+		return
 	}
+
+	user, err := h.UserUsecase.GetUserByUserID(c.Request.Context(), int64(userID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error_message": err.Error(),
+		})
+		return
+	}
+
+	if user.ID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error_message": "User not found!",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"name":  user.Name,
+		"email": user.Email,
+		// profile picture
+	})
 }

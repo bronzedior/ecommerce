@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt"
 )
 
 func AuthMiddleware(secret string) gin.HandlerFunc {
@@ -49,20 +49,7 @@ func AuthMiddleware(secret string) gin.HandlerFunc {
 			return
 		}
 
-		// c.Set("user_id", claims["user.id"])
-		// c.Next()
-
-		switch v := claims["user_id"].(type) {
-		case string:
-			c.Set("user_id", v) // email
-			// case float64:
-			// 	c.Set("user_id", int64(v)) // numeric ID
-			// default:
-			// 	c.JSON(http.StatusUnauthorized, gin.H{
-			// 		"error": "Invalid user_id type",
-			// 	})
-			// 	c.Abort()
-			// 	return
-		}
+		c.Set("user_id", claims["user_id"].(float64))
+		c.Next()
 	}
 }

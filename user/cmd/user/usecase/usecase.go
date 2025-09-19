@@ -65,18 +65,8 @@ func (uc *UserUsecase) RegisterUser(ctx context.Context, user *models.User) erro
 	return nil
 }
 
-func (uc *UserUsecase) Login(ctx context.Context, param *models.LoginParameter) (string, error) {
-	user, err := uc.UserService.GetUserByEmail(ctx, param.Email)
-	if user.ID == 0 {
-		return "", errors.New("email not found")
-	}
-	if err != nil {
-		log.Logger.WithFields(logrus.Fields{
-			"email": param.Email,
-		}).Errorf("uc.UserService.GetUserByEmail got error: %v", err)
-	}
-
-	isMatch, err := utils.CheckPasswordHash(user.Password, param.Password)
+func (uc *UserUsecase) Login(ctx context.Context, param models.LoginParameter, userID int64, storedPassword string) (string, error) {
+	isMatch, err := utils.CheckPasswordHash(storedPassword, param.Password)
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
 			"email": param.Email,
@@ -88,7 +78,7 @@ func (uc *UserUsecase) Login(ctx context.Context, param *models.LoginParameter) 
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": param.Email,
+		"user_id": userID,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
@@ -96,7 +86,8 @@ func (uc *UserUsecase) Login(ctx context.Context, param *models.LoginParameter) 
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
 			"email": param.Email,
-		}).Errorf("utils.SignedString got error: %v", err)
+		}).Errorf("token.SignedString got error: %v", err)
+		return "", err
 	}
 
 	return tokenString, nil
