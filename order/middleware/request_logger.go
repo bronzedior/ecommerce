@@ -28,7 +28,7 @@ func RequestLogger() gin.HandlerFunc {
 			"request_id": requestID,
 			"method":     c.Request.Method,
 			"path":       c.Request.URL.Path,
-			"status":     c.Writer.Status(),
+			"status":     c.Writer.Status(), // status code
 			"latency":    latency,
 		}
 
