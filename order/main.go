@@ -8,6 +8,7 @@ import (
 	"order/cmd/order/usecase"
 	"order/config"
 	"order/infrastructure/log"
+	"order/kafka"
 	"order/routes"
 
 	"github.com/gin-gonic/gin"
@@ -20,9 +21,12 @@ func main() {
 
 	log.SetupLogger()
 
+	kafkaProducer := kafka.NewKafkaProducer([]string{"localhost:9093"}, "order.created")
+	defer kafkaProducer.Close()
+
 	orderRepository := repository.NewOrderRepository(db, redis)
 	orderService := service.NewOrderService(*orderRepository)
-	orderUsecase := usecase.NewOrderUsecase(*orderService)
+	orderUsecase := usecase.NewOrderUsecase(*orderService, *kafkaProducer)
 	orderHandler := handler.NewOrderHandler(*orderUsecase)
 
 	port := cfg.App.Port

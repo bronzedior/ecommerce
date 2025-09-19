@@ -7,17 +7,20 @@ import (
 	"fmt"
 	"order/cmd/order/service"
 	"order/infrastructure/constant"
+	"order/kafka"
 	"order/models"
 	"time"
 )
 
 type OrderUsecase struct {
 	OrderService service.OrderService
+	Producer     kafka.KafkaProducer
 }
 
-func NewOrderUsecase(orderService service.OrderService) *OrderUsecase {
+func NewOrderUsecase(orderService service.OrderService, kafkaProducer kafka.KafkaProducer) *OrderUsecase {
 	return &OrderUsecase{
 		OrderService: orderService,
+		Producer:     kafkaProducer,
 	}
 }
 
@@ -64,6 +67,18 @@ func (uc *OrderUsecase) CheckoutOrder(ctx context.Context, param *models.Checkou
 
 	if param.IdempotencyToken != "" {
 		_ = uc.OrderService.SaveIdempotencyToken(ctx, param.IdempotencyToken)
+	}
+
+	orderCreatedEvent := models.OrderCreatedEvent{
+		OrderID:         orderID,
+		UserID:          param.UserID,
+		TotalAmount:     order.Amount,
+		PaymentMethod:   param.PaymentMethod,
+		ShippingAddress: param.ShippingAddress,
+	}
+	err = uc.Producer.PublishOrderCreated(ctx, orderCreatedEvent)
+	if err != nil {
+		return 0, err
 	}
 
 	return orderID, nil
