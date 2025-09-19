@@ -14,4 +14,4 @@ redis:
   password:
 
 secret:
-  jwt_secret: "secret"
+  jwtsecret: "secret"

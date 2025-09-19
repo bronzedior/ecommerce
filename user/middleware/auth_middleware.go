@@ -19,6 +19,9 @@ func AuthMiddleware(secret string) gin.HandlerFunc {
 			return
 		}
 
+		// format token
+		// Authorization: Bearer xxx
+		// [Bearer] [xxx]
 		tokenString := strings.Split(authHeader, " ")
 		if len(tokenString) != 2 {
 			c.JSON(http.StatusUnauthorized, gin.H{
