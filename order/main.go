@@ -24,7 +24,7 @@ func main() {
 	kafkaProducer := kafka.NewKafkaProducer([]string{"localhost:9093"}, "order.created")
 	defer kafkaProducer.Close()
 
-	orderRepository := repository.NewOrderRepository(db, redis)
+	orderRepository := repository.NewOrderRepository(db, redis, cfg.Product.Host)
 	orderService := service.NewOrderService(*orderRepository)
 	orderUsecase := usecase.NewOrderUsecase(*orderService, *kafkaProducer)
 	orderHandler := handler.NewOrderHandler(*orderUsecase)

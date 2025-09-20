@@ -5,6 +5,7 @@ type Config struct {
 	Database DatabaseConfig `yaml:"database" validate:"required"`
 	Redis    RedisConfig    `yaml:"redis" validate:"required"`
 	Secret   SecretConfig   `yaml:"secret" validate:"required"`
+	Product  ProductConfig  `yaml:"product" validate:"required"`
 }
 
 type AppConfig struct {
@@ -27,4 +28,8 @@ type RedisConfig struct {
 
 type SecretConfig struct {
 	JWTSecret string `yaml:"jwtsecret" validate:"required"`
+}
+
+type ProductConfig struct {
+	Host string `yaml:"host" validate:"required"`
 }

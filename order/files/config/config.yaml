@@ -13,5 +13,8 @@ redis:
   port: 6379
   password:
 
+product:
+  host: localhost:8081
+
 secret:
   jwtsecret: "secret"

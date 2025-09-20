@@ -36,7 +36,7 @@ func (uc *OrderUsecase) CheckoutOrder(ctx context.Context, param *models.Checkou
 		}
 	}
 
-	if err := uc.validateProducts(param.Items); err != nil {
+	if err := uc.validateProducts(ctx, param.Items); err != nil {
 		return 0, err
 	}
 
@@ -84,22 +84,26 @@ func (uc *OrderUsecase) CheckoutOrder(ctx context.Context, param *models.Checkou
 	return orderID, nil
 }
 
-func (uc *OrderUsecase) validateProducts(items []models.CheckoutItem) error {
-	seen := map[int64]bool{}
+func (uc *OrderUsecase) validateProducts(ctx context.Context, items []models.CheckoutItem) error {
 	for _, item := range items {
-		if seen[item.ProductID] {
-			return fmt.Errorf("duplicate product: %d", item.ProductID)
-		}
-		seen[item.ProductID] = true
-
-		if item.Quantity <= 0 || item.Quantity > 10000 {
-			return fmt.Errorf("invalid quantity for %d", item.ProductID)
+		productInfo, err := uc.OrderService.GetProductInfo(ctx, item.ProductID)
+		if err != nil {
+			return fmt.Errorf("failed get product info: %d, err %s", item.ProductID, err.Error())
 		}
 
-		if item.Price <= 0 {
-			return fmt.Errorf("invalid price for %d", item.ProductID)
+		if item.Price != productInfo.Price {
+			return fmt.Errorf("invalid price for product %d (%.2f - %.2f)", item.ProductID, item.Price, productInfo.Price)
+		}
+
+		if item.Quantity <= 0 || item.Quantity > 1000 {
+			return fmt.Errorf("invalid quantity product %d, maximum product quantity is 1000", item.ProductID)
+		}
+
+		if item.Quantity > productInfo.Stock {
+			return fmt.Errorf("invalid prodouct quantity %d, product stock is only %d", item.ProductID, productInfo.Stock)
 		}
 	}
+
 	return nil
 }
 
