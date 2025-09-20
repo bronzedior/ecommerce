@@ -13,9 +13,9 @@ type ProductService struct {
 	ProductRepository repository.ProductRepository
 }
 
-func NewProductService(ProductRepository repository.ProductRepository) *ProductService {
+func NewProductService(productRepository repository.ProductRepository) *ProductService {
 	return &ProductService{
-		ProductRepository: ProductRepository,
+		ProductRepository: productRepository,
 	}
 }
 
@@ -25,7 +25,7 @@ func (s *ProductService) GetProductByID(ctx context.Context, productID int64) (*
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
 			"productID": productID,
-		}).Errorf("s.ProductRepository.GetProductByIDFromRedis got error %v", err)
+		}).Errorf("s.ProductRepository.GetProductByIDFromRedis() got error %v", err)
 	}
 
 	if product.ID != 0 {
@@ -52,33 +52,10 @@ func (s *ProductService) GetProductByID(ctx context.Context, productID int64) (*
 }
 
 func (s *ProductService) GetProductCategoryByID(ctx context.Context, productCategoryID int) (*models.ProductCategory, error) {
-	// get from Redis
-	productCategory, err := s.ProductRepository.GetProductCategoryByIDFromRedis(ctx, productCategoryID)
-	if err != nil {
-		log.Logger.WithFields(logrus.Fields{
-			"productCategoryID": productCategoryID,
-		}).Errorf("s.ProductRepository.GetProductCategoryByIDFromRedis got error %v", err)
-	}
-
-	if productCategory.ID != 0 {
-		return productCategory, nil
-	}
-
-	// get from DB
-	productCategory, err = s.ProductRepository.FindProductCategoryByID(ctx, productCategoryID)
+	productCategory, err := s.ProductRepository.FindProductCategoryByID(ctx, productCategoryID)
 	if err != nil {
 		return nil, err
 	}
-
-	ctxConcurrent := context.WithValue(ctx, context.Background(), ctx.Value("request_id"))
-	go func(ctx context.Context, product *models.ProductCategory, productID int) {
-		errConcurrent := s.ProductRepository.SetProductCategoryByID(ctx, productCategory, productCategoryID)
-		if errConcurrent != nil {
-			log.Logger.WithFields(logrus.Fields{
-				"productCategory": productCategory,
-			}).Errorf("s.ProductRepository.SetProductCategoryByID() got error %v", errConcurrent)
-		}
-	}(ctxConcurrent, productCategory, productCategoryID)
 
 	return productCategory, nil
 }
@@ -129,7 +106,7 @@ func (s *ProductService) DeleteProduct(ctx context.Context, productID int64) err
 }
 
 func (s *ProductService) DeleteProductCategory(ctx context.Context, productCategoryID int) error {
-	err := s.ProductRepository.DeleteProductCategory(ctx, int64(productCategoryID))
+	err := s.ProductRepository.DeleteProductCategory(ctx, productCategoryID)
 	if err != nil {
 		return err
 	}

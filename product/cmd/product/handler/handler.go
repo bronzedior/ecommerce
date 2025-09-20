@@ -71,7 +71,7 @@ func (h *ProductHandler) GetProductCategoryInfo(c *gin.Context) {
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
 			"productID": productCategoryIDstr,
-		}).Errorf("strconv.atoi got error %v", err)
+		}).Errorf("strconv.Atoi got error %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error_message": "Invalid Product ID",
 		})
@@ -82,7 +82,7 @@ func (h *ProductHandler) GetProductCategoryInfo(c *gin.Context) {
 	productCategory, err := h.ProductUsecase.GetProductCategoryByID(c.Request.Context(), productCategoryID)
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
-			"productCategoryID": productCategory,
+			"productCategoryID": productCategoryID,
 		}).Errorf("h.ProductUsecase.GetProductCategoryByID() got error %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error_message": err,
@@ -152,7 +152,7 @@ func (h *ProductHandler) ProductManagement(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": fmt.Sprintf("Successfully create new product: %d", productID),
+			"message": fmt.Sprintf("Sucessfully create new product: %d", productID),
 		})
 
 		return
@@ -177,12 +177,11 @@ func (h *ProductHandler) ProductManagement(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error_message": err,
 			})
-
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Sucess edit product!",
+			"message": "Success edit product!",
 			"product": product,
 		})
 
@@ -207,7 +206,6 @@ func (h *ProductHandler) ProductManagement(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error_message": err,
 			})
-
 			return
 		}
 
@@ -231,7 +229,6 @@ func (h *ProductHandler) ProductCategoryManagement(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error_message": "Invalid Input",
 		})
-
 		return
 	}
 
@@ -266,7 +263,6 @@ func (h *ProductHandler) ProductCategoryManagement(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error_message": err,
 			})
-
 			return
 		}
 
@@ -296,12 +292,11 @@ func (h *ProductHandler) ProductCategoryManagement(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error_message": err,
 			})
-
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message":         "Sucess Edit Product",
+			"message":         "Success Edit Product",
 			"productCategory": productCategory,
 		})
 
@@ -314,19 +309,17 @@ func (h *ProductHandler) ProductCategoryManagement(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error_message": "Invalid Request",
 			})
-
 			return
 		}
 
 		err := h.ProductUsecase.DeleteProductCategory(c.Request.Context(), param.ID)
 		if err != nil {
 			log.Logger.WithFields(logrus.Fields{
-				"param": param,
+				"param": param, // notes: kalau ada PII --> prevent print log PII data
 			}).Errorf("h.ProductUsecase.DeleteProductCategory() got error %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error_message": err,
 			})
-
 			return
 		}
 
@@ -374,7 +367,6 @@ func (h *ProductHandler) SearchProduct(c *gin.Context) {
 		OrderBy:  orderBy,
 		Sort:     sort,
 	}
-
 	products, totalCount, err := h.ProductUsecase.SearchProduct(c.Request.Context(), param)
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
@@ -392,7 +384,8 @@ func (h *ProductHandler) SearchProduct(c *gin.Context) {
 
 	var nextPageUrl *string
 	if page < totalPages {
-		url := fmt.Sprintf("%s/v1/product/search?name=%s&category=%s&minPrice=%0.f&maxPrice=%0.f&page=%d&pageSize=%d", c.Request.Host, name, category, minPrice, maxPrice, page+1, pageSize)
+		url := fmt.Sprintf("%s/v1/product/search?name=%s&category=%s&minPrice=%0.f&maxPrice=%0.f&page=%d&pageSize=%d",
+			c.Request.Host, name, category, minPrice, maxPrice, page+1, pageSize)
 		nextPageUrl = &url
 	}
 

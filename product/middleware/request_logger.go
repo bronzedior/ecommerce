@@ -33,7 +33,7 @@ func RequestLogger() gin.HandlerFunc {
 		}
 
 		if c.Writer.Status() == 200 || c.Writer.Status() == 201 {
-			log.Logger.WithFields(requestLog).Info("Request Sucess")
+			log.Logger.WithFields(requestLog).Info("Request Success")
 		} else {
 			log.Logger.WithFields(requestLog).Error("Request Error")
 		}

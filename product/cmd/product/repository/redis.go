@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	cacheKeyProductInfo         = "product:%d"
+	cacheKeyProductInfo         = "product:%d" // format: product:{productID} product:1
 	cacheKeyProductCategoryInfo = "product_category:%d"
 )
 
