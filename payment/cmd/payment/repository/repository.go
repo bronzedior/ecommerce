@@ -1,13 +1,18 @@
 package repository
 
-import "github.com/redis/go-redis/v9"
+import (
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+)
 
 type PaymentRepository struct {
-	Redis *redis.Client
+	Database *gorm.DB
+	Redis    *redis.Client
 }
 
-func NewPaymentRepository(redis *redis.Client) *PaymentRepository {
+func NewPaymentRepository(db *gorm.DB, redis *redis.Client) *PaymentRepository {
 	return &PaymentRepository{
-		Redis: redis,
+		Database: db,
+		Redis:    redis,
 	}
 }

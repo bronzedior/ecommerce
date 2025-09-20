@@ -16,10 +16,11 @@ import (
 func main() {
 	cfg := config.LoadConfig()
 	redis := resource.InitRedis(&cfg)
+	db := resource.InitDB(&cfg)
 
 	log.SetupLogger()
 
-	paymentRepository := repository.NewPaymentRepository(redis)
+	paymentRepository := repository.NewPaymentRepository(db, redis)
 	paymentService := service.NewPaymentService(*paymentRepository)
 	paymentUsecase := usecase.NewPaymentUsecase(*paymentService)
 	paymentHandler := handler.NewPaymentHandler(*paymentUsecase)
