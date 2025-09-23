@@ -28,7 +28,7 @@ func main() {
 	publisherRepository := repository.NewKafkaPublisher(kafkaWriter)
 	paymentService := service.NewPaymentService(databaseRepository, publisherRepository)
 	paymentUsecase := usecase.NewPaymentUsecase(paymentService)
-	paymentHandler := handler.NewPaymentHandler(paymentUsecase)
+	paymentHandler := handler.NewPaymentHandler(paymentUsecase, cfg.Xendit.XenditWebhookToken)
 
 	xenditRepository := repository.NewXenditClient(cfg.Xendit.XenditAPIKey)
 	xenditService := service.NewXenditService(databaseRepository, xenditRepository)

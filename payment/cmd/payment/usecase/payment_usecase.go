@@ -2,11 +2,15 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"payment/cmd/payment/service"
+	"payment/infrastructure/constant"
 	"payment/infrastructure/log"
 	"payment/models"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -29,7 +33,45 @@ func (uc *paymentUsecase) ProcessPaymentWebhook(ctx context.Context, payload mod
 	switch payload.Status {
 	case "PAID":
 		orderID := extractOrderID(payload.ExternalID)
-		err := uc.Service.ProcessPaymentSuccess(ctx, orderID)
+
+		amount, err := uc.Service.CheckPaymentAmountByOrderID(ctx, orderID)
+		if err != nil {
+			log.Logger.WithFields(logrus.Fields{
+				"order_id":       orderID,
+				"status":         payload.Status,
+				"external_id":    payload.ExternalID,
+				"webhook_amount": payload,
+			})
+		}
+
+		if amount != payload.Amount {
+			errorMessage := fmt.Sprintf("Webhook amount mismatched: expected %.2f, got %.2f", amount, payload.Amount)
+			paymentAnomaly := models.PaymentAnomaly{
+				OrderID:     orderID,
+				ExternalID:  payload.ExternalID,
+				AnomalyType: constant.AnomalyTypeInvalidAmount,
+				Notes:       errorMessage,
+				Status:      constant.PaymentAnomalyStatusNeedToCheck,
+				CreateTime:  time.Now(),
+			}
+
+			err := uc.Service.SavePaymentAnomaly(ctx, paymentAnomaly)
+			if err != nil {
+				log.Logger.WithFields(logrus.Fields{
+					"payload":        payload,
+					"paymentAnomaly": paymentAnomaly,
+				}).WithError(err)
+				return err
+			}
+
+			log.Logger.WithFields(logrus.Fields{
+				"payload": payload,
+			}).Errorf("Webhook amount mismatched: expected %.2f, got %.2f", amount, payload.Amount)
+			err = errors.New(errorMessage)
+			return err
+		}
+
+		err = uc.Service.ProcessPaymentSuccess(ctx, orderID)
 		if err != nil {
 			log.Logger.WithFields(logrus.Fields{
 				"status":      payload.Status,

@@ -12,15 +12,27 @@ import (
 
 type PaymentHandler interface {
 	HandleXenditWebhook(c *gin.Context)
+
+	HandleCreateInvoice(c *gin.Context)
 }
 
 type paymentHandler struct {
-	Usecase usecase.PaymentUsecase
+	Usecase            usecase.PaymentUsecase
+	XenditWebhookToken string
 }
 
-func NewPaymentHandler(usecase usecase.PaymentUsecase) PaymentHandler {
+func NewPaymentHandler(usecase usecase.PaymentUsecase, webhookToken string) PaymentHandler {
 	return &paymentHandler{
-		Usecase: usecase,
+		Usecase:            usecase,
+		XenditWebhookToken: webhookToken,
+	}
+}
+
+func (h *paymentHandler) HandleCreateInvoice(c *gin.Context) {
+	var payload models.OrderCreatedEvent
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
 	}
 }
 
@@ -31,6 +43,15 @@ func (h *paymentHandler) HandleXenditWebhook(c *gin.Context) {
 			"payload": payload,
 		})
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload", "error_message": err.Error()})
+		return
+	}
+
+	headerWebhookToken := c.GetHeader("x-callback-token")
+	if h.XenditWebhookToken != headerWebhookToken {
+		log.Logger.WithFields(logrus.Fields{
+			"callbackToken": headerWebhookToken,
+		}).Errorf("Invalid Webhook Token: %s", headerWebhookToken)
+		c.JSON(http.StatusForbidden, gin.H{"error": "invalid webhook token!"})
 		return
 	}
 
