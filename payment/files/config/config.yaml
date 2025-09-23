@@ -5,8 +5,19 @@ database:
   host: localhost
   user: admin
   name: payment
+  password: password
   port: 5432
 
 redis:
   host: 127.0.0.1
   port: 6379
+
+kafka:
+  broker: localhost:9093
+  topics:
+    - order.created: order.created
+    - payment.success: payment.success
+
+xendit:
+  secret_api_key: "xnd_public_development_6MlnAfirHLZ16UVHS4GFoM998EEITUnCR4GbXJjRnnc0dViXtqJbdE6oLmnPqRh5"
+  webhook_token: "zhm3vXegF8gm611hxFznLxS7vPJIoVestzbzMjmwHF6fQaEf"

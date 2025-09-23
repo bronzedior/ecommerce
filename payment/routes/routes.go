@@ -9,5 +9,5 @@ import (
 
 func SetupRoutes(router *gin.Engine, paymentHandler handler.PaymentHandler) {
 	router.Use(middleware.RequestLogger())
-	router.GET("/ping", paymentHandler.Ping)
+	router.POST("/v1/payment/webhook", paymentHandler.HandleXenditWebhook)
 }
