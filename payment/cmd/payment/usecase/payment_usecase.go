@@ -8,6 +8,7 @@ import (
 	"payment/infrastructure/constant"
 	"payment/infrastructure/log"
 	"payment/models"
+	"payment/pdf"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,8 @@ type PaymentUsecase interface {
 	ProcessPaymentRequests(ctx context.Context, payload models.OrderCreatedEvent) error
 
 	ProcessPaymentWebhook(ctx context.Context, param models.XenditWebhookPayload) error
+
+	DownloadPDFInvoice(ctx context.Context, orderID int64) (string, error)
 }
 
 type paymentUsecase struct {
@@ -29,6 +32,21 @@ func NewPaymentUsecase(svc service.PaymentService) PaymentUsecase {
 	return &paymentUsecase{
 		Service: svc,
 	}
+}
+
+func (uc *paymentUsecase) DownloadPDFInvoice(ctx context.Context, orderID int64) (string, error) {
+	paymentDetail, err := uc.Service.GetPaymentInfoByOrderID(ctx, orderID)
+	if err != nil {
+		return "", err
+	}
+
+	filePath := fmt.Sprintf("/ecommerce/invoice_%d", orderID)
+	err = pdf.GenerateInvoicePDF(paymentDetail, filePath)
+	if err != nil {
+		return "", err
+	}
+
+	return filePath, nil
 }
 
 func (uc *paymentUsecase) ProcessPaymentRequests(ctx context.Context, payload models.OrderCreatedEvent) error {
