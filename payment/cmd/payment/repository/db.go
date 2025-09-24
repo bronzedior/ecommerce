@@ -42,6 +42,8 @@ type PaymentDatabase interface {
 	GetExpiredPendingPayments(ctx context.Context) ([]models.Payment, error)
 
 	MarkExpired(ctx context.Context, paymentID int64) error
+
+	InsertAuditLog(ctx context.Context, param models.PaymentAuditLog) error
 }
 
 type paymentDatabase struct {
@@ -229,6 +231,15 @@ func (r *paymentDatabase) MarkExpired(ctx context.Context, paymentID int64) erro
 		"status":      "EXPIRED",
 		"update_time": time.Now(),
 	}).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *paymentDatabase) InsertAuditLog(ctx context.Context, param models.PaymentAuditLog) error {
+	err := r.DB.Table("payment_audit_logs").WithContext(ctx).Create(param).Error
 	if err != nil {
 		return err
 	}

@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 	"payment/cmd/payment/repository"
+	"payment/infrastructure/log"
 	"payment/models"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type SchedulerService struct {
@@ -19,10 +21,10 @@ type SchedulerService struct {
 func (s *SchedulerService) StartSweepingExpiredPendingPayments() {
 	go func(ctx context.Context) {
 		for {
-			log.Println("Scheduler StartSpeeingExpiredPendingPayments is running...")
+			log.Logger.Println("Scheduler StartSpeeingExpiredPendingPayments is running...")
 			expiredPayments, err := s.Database.GetExpiredPendingPayments(ctx)
 			if err != nil {
-				log.Println("Failed get expired pending payments, err: ", err.Error())
+				log.Logger.Println("Failed get expired pending payments, err: ", err.Error())
 				time.Sleep(5 * time.Minute)
 				continue
 			}
@@ -30,7 +32,7 @@ func (s *SchedulerService) StartSweepingExpiredPendingPayments() {
 			for _, expiredPayment := range expiredPayments {
 				err = s.Database.MarkExpired(ctx, expiredPayment.ID)
 				if err != nil {
-					log.Printf("[payment id: %d] Failed update expired, err: %s", expiredPayment.ID, err.Error())
+					log.Logger.Printf("[payment id: %d] Failed update expired, err: %s", expiredPayment.ID, err.Error())
 				}
 			}
 
@@ -45,7 +47,7 @@ func (s *SchedulerService) StartProcessFailedPaymentRequests() {
 			var paymentRequests []models.PaymentRequests
 			err := s.Database.GetFailedPaymentRequests(ctx, &paymentRequests)
 			if err != nil {
-				log.Panicln("Error get failed payment request! error: ", err.Error())
+				log.Logger.Panicln("Error get failed payment request! error: ", err.Error())
 
 				time.Sleep(10 * time.Second)
 				continue
@@ -54,11 +56,11 @@ func (s *SchedulerService) StartProcessFailedPaymentRequests() {
 			for _, paymentRequest := range paymentRequests {
 				err = s.Database.UpdatePendingPaymentRequests(ctx, paymentRequest.ID)
 				if err != nil {
-					log.Println("s.Database.UpdatePendingPaymentRequests() got error: ", err.Error())
+					log.Logger.Println("s.Database.UpdatePendingPaymentRequests() got error: ", err.Error())
 
 					errUpdateStatus := s.Database.UpdateFailedPaymentRequests(ctx, paymentRequest.ID, err.Error())
 					if errUpdateStatus != nil {
-						log.Panicln("s.Database.UpdateFailedPaymentRequests() got error: ", err)
+						log.Logger.Panicln("s.Database.UpdateFailedPaymentRequests() got error: ", err)
 					}
 
 					continue
@@ -76,17 +78,17 @@ func (s *SchedulerService) StartProcessPendingPaymentRequests() {
 			var paymentRequests []models.PaymentRequests
 			err := s.Database.GetPendingPaymentRequests(ctx, &paymentRequests)
 			if err != nil {
-				log.Println("s.Database.GetPendingPaymentRequests() got error: ", err.Error())
+				log.Logger.Println("s.Database.GetPendingPaymentRequests() got error: ", err.Error())
 				time.Sleep(10 * time.Second)
 				continue
 			}
 
 			for _, paymentRequest := range paymentRequests {
-				log.Printf("[DEBUG] Processing Payment Request Order %d", paymentRequest.OrderID)
+				log.Logger.Printf("[DEBUG] Processing Payment Request Order %d", paymentRequest.OrderID)
 
 				paymentInfo, err := s.Database.GetPaymentInfoByOrderID(ctx, paymentRequest.OrderID)
 				if err != nil {
-					log.Println("s.Database.GetPaymentInfoByOrderID() got error ", err.Error())
+					log.Logger.Println("s.Database.GetPaymentInfoByOrderID() got error ", err.Error())
 					continue
 				}
 
@@ -94,23 +96,43 @@ func (s *SchedulerService) StartProcessPendingPaymentRequests() {
 				if paymentInfo.ID != 0 {
 					err = s.Database.UpdateSuccessPaymentRequests(ctx, paymentRequest.ID)
 					if err != nil {
-						log.Printf("[req id: %d] s.Database.UpdateSuccessPaymentRequest() got error: %s", paymentRequest.ID, err.Error())
+						log.Logger.Printf("[req id: %d] s.Database.UpdateSuccessPaymentRequest() got error: %s", paymentRequest.ID, err.Error())
 					}
 					continue
 				}
 
-				xenditInvoiceDetail, err := s.Xendit.CreateInvoice(ctx, models.XenditInvoiceRequest{
+				xenditInvoiceRequestParam := models.XenditInvoiceRequest{
 					ExternalID:  externalID,
 					Amount:      paymentRequest.Amount,
 					Description: fmt.Sprintf("[FC] Pembayaran Order %d", paymentRequest.OrderID),
 					PayerEmail:  fmt.Sprintf("user%d@test.com", paymentRequest.UserID),
-				})
+				}
+
+				xenditInvoiceDetail, err := s.Xendit.CreateInvoice(ctx, xenditInvoiceRequestParam)
+
+				paymentAuditLogParam := models.PaymentAuditLog{
+					OrderID:    paymentInfo.OrderID,
+					UserID:     paymentInfo.UserID,
+					PaymentID:  paymentInfo.ID,
+					ExternalID: externalID,
+					Event:      "CreateInvooice",
+					Actor:      "xendit",
+					CreateTime: time.Now(),
+				}
+
+				errAuditLog := s.Database.InsertAuditLog(ctx, paymentAuditLogParam)
+				if errAuditLog != nil {
+					log.Logger.WithFields(logrus.Fields{
+						"auditLogParam": paymentAuditLogParam,
+					}).WithError(errAuditLog).Errorf("s.Database.InsertAuditLog() got error %v", errAuditLog)
+				}
+
 				if err != nil {
-					log.Printf("[req id: %d] s.Xendit.CreateInvoice() got error: %v", paymentRequest.ID, err.Error())
+					log.Logger.Printf("[req id: %d] s.Xendit.CreateInvoice() got error: %v", paymentRequest.ID, err.Error())
 
 					errSaveFailedPaymentRequest := s.Database.UpdateFailedPaymentRequests(ctx, paymentRequest.ID, err.Error())
 					if errSaveFailedPaymentRequest != nil {
-						log.Printf("[req id: %d] s.Database.UpdateFailedPaymentRequests() got error: %v", paymentRequest.ID, errSaveFailedPaymentRequest.Error())
+						log.Logger.Printf("[req id: %d] s.Database.UpdateFailedPaymentRequests() got error: %v", paymentRequest.ID, errSaveFailedPaymentRequest.Error())
 					}
 
 					continue
@@ -118,7 +140,7 @@ func (s *SchedulerService) StartProcessPendingPaymentRequests() {
 
 				err = s.Database.UpdateSuccessPaymentRequests(ctx, paymentRequest.ID)
 				if err != nil {
-					log.Printf("[req id: %d] s.Database.UpdateSuccessPaymentRequest() got error: %s", paymentRequest.ID, err.Error())
+					log.Logger.Printf("[req id: %d] s.Database.UpdateSuccessPaymentRequest() got error: %s", paymentRequest.ID, err.Error())
 				}
 
 				err = s.Database.SavePayment(ctx, models.Payment{
@@ -131,7 +153,7 @@ func (s *SchedulerService) StartProcessPendingPaymentRequests() {
 					ExpiredTime: xenditInvoiceDetail.ExpiryDate,
 				})
 				if err != nil {
-					log.Printf("[req id: %d] s.Database.SavePayment() got error: %s", paymentRequest.ID, err.Error())
+					log.Logger.Printf("[req id: %d] s.Database.SavePayment() got error: %s", paymentRequest.ID, err.Error())
 				}
 			}
 
@@ -148,21 +170,22 @@ func (s *SchedulerService) StartCheckPendingInvoices() {
 			ctx := context.Background()
 			listPendingInvoices, err := s.Database.GetPendingInvoices(ctx)
 			if err != nil {
-				log.Println("s.Database.GetPendingInvoices() got error: ", err.Error())
+				log.Logger.Println("s.Database.GetPendingInvoices() got error: ", err.Error())
 				continue
 			}
 
 			for _, pendingInvoice := range listPendingInvoices {
 				invoiceStatus, err := s.Xendit.CheckInvoiceStatus(ctx, pendingInvoice.ExternalID)
 				if err != nil {
-					log.Println("s.Xendit.CheckInvoiceStatus() got error: ", err.Error())
+					log.Logger.Println("s.Xendit.CheckInvoiceStatus() got error: ", err.Error())
 					continue
 				}
 
 				if invoiceStatus == "PAID" {
-					err = s.PaymentService.ProcessPaymentSuccess(ctx, pendingInvoice.ID)
+					err = s.PaymentService.ProcessPaymentSuccess(ctx,
+						pendingInvoice.ID)
 					if err != nil {
-						log.Println("s.PaymentService.ProcessPaymentSuccess() got error: ", err)
+						log.Logger.Println("s.PaymentService.ProcessPaymentSuccess() got error: ", err)
 						continue
 					}
 				}
