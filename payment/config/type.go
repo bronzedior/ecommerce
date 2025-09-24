@@ -7,6 +7,7 @@ type Config struct {
 	Secret   SecretConfig   `yaml:"secret" validate:"required"`
 	Kafka    KafkaConfig    `yaml:"kafka" validate:"required"`
 	Xendit   XenditConfig   `yaml:"xendit" validate:"required"`
+	Toggle   ToggleConfig   `yaml:"toggle" validate:"required"`
 }
 
 type AppConfig struct {
@@ -39,4 +40,8 @@ type KafkaConfig struct {
 type XenditConfig struct {
 	XenditAPIKey       string `yaml:"secret_api_key" validate:"required"`
 	XenditWebhookToken string `yaml:"webhook_token" validate:"required"`
+}
+
+type ToggleConfig struct {
+	DisableCreateInvoiceDirectly bool `yaml:"disable_create_invoice_directly" validate:"required"`
 }

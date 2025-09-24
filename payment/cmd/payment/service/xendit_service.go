@@ -36,7 +36,7 @@ func (s *xenditService) CreateInvoice(ctx context.Context, param models.OrderCre
 		PayerEmail:  fmt.Sprintf("user%d@test.com", param.UserID),
 	}
 
-	_, err := s.xendit.CreateInvoice(ctx, req)
+	xenditInvoiceDetail, err := s.xendit.CreateInvoice(ctx, req)
 	if err != nil {
 		log.Logger.WithFields(logrus.Fields{
 			"param":   param,
@@ -46,12 +46,13 @@ func (s *xenditService) CreateInvoice(ctx context.Context, param models.OrderCre
 	}
 
 	newPayment := models.Payment{
-		OrderID:    param.OrderID,
-		UserID:     param.UserID,
-		ExternalID: externalID,
-		Amount:     param.TotalAmount,
-		Status:     "PENDING",
-		CreateTime: time.Now(),
+		OrderID:     param.OrderID,
+		UserID:      param.UserID,
+		ExternalID:  externalID,
+		Amount:      param.TotalAmount,
+		Status:      "PENDING",
+		CreateTime:  time.Now(),
+		ExpiredTime: xenditInvoiceDetail.ExpiryDate,
 	}
 	err = s.database.SavePayment(ctx, newPayment)
 	if err != nil {

@@ -16,6 +16,8 @@ import (
 )
 
 type PaymentUsecase interface {
+	ProcessPaymentRequests(ctx context.Context, payload models.OrderCreatedEvent) error
+
 	ProcessPaymentWebhook(ctx context.Context, param models.XenditWebhookPayload) error
 }
 
@@ -27,6 +29,22 @@ func NewPaymentUsecase(svc service.PaymentService) PaymentUsecase {
 	return &paymentUsecase{
 		Service: svc,
 	}
+}
+
+func (uc *paymentUsecase) ProcessPaymentRequests(ctx context.Context, payload models.OrderCreatedEvent) error {
+	err := uc.Service.SavePaymentRequests(ctx, models.PaymentRequests{
+		OrderID:    payload.OrderID,
+		Amount:     payload.TotalAmount,
+		UserID:     payload.UserID,
+		Status:     "PENDING",
+		CreateTime: time.Now(),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (uc *paymentUsecase) ProcessPaymentWebhook(ctx context.Context, payload models.XenditWebhookPayload) error {

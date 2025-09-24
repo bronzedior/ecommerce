@@ -21,3 +21,6 @@ kafka:
 xendit:
   secret_api_key: "xnd_public_development_6MlnAfirHLZ16UVHS4GFoM998EEITUnCR4GbXJjRnnc0dViXtqJbdE6oLmnPqRh5"
   webhook_token: "zhm3vXegF8gm611hxFznLxS7vPJIoVestzbzMjmwHF6fQaEf"
+
+toggle:
+  disable_create_invoice_directly: true

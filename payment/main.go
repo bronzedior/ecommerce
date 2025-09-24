@@ -34,10 +34,30 @@ func main() {
 	xenditService := service.NewXenditService(databaseRepository, xenditRepository)
 	xenditUsecase := usecase.NewXenditUsecase(xenditService)
 
+	scheduler := service.SchedulerService{
+		Database:       databaseRepository,
+		Xendit:         xenditRepository,
+		Publisher:      publisherRepository,
+		PaymentService: paymentService,
+	}
+
+	scheduler.StartCheckPendingInvoices()
+	scheduler.StartProcessPendingPaymentRequests()
+	scheduler.StartProcessFailedPaymentRequests()
+	scheduler.StartSweepingExpiredPendingPayments()
+
 	kafka.StartOrderConsumer(cfg.Kafka.Broker, cfg.Kafka.KafkaTopics[constant.KafkaTopicOrderCreated],
 		func(event models.OrderCreatedEvent) {
-			if err := xenditUsecase.CreateInvoice(context.Background(), event); err != nil {
-				log.Logger.Println("failed handling order created event: ", err.Error())
+			if cfg.Toggle.DisableCreateInvoiceDirectly {
+				err := paymentUsecase.ProcessPaymentRequests(context.Background(), event)
+				if err != nil {
+					log.Logger.Println("Failed Handling Order Created Event: ", err.Error())
+				}
+			} else {
+				err := xenditUsecase.CreateInvoice(context.Background(), event)
+				if err != nil {
+					log.Logger.Println("failed handling order created event: ", err.Error())
+				}
 			}
 		})
 

@@ -22,6 +22,8 @@ type PaymentService interface {
 	ProcessPaymentSuccess(ctx context.Context, orderID int64) error
 
 	SavePaymentAnomaly(ctx context.Context, param models.PaymentAnomaly) error
+
+	SavePaymentRequests(ctx context.Context, param models.PaymentRequests) error
 }
 
 type paymentService struct {
@@ -50,6 +52,15 @@ func (s *paymentService) CheckPaymentAmountByOrderID(ctx context.Context, orderI
 
 func (s *paymentService) SavePaymentAnomaly(ctx context.Context, param models.PaymentAnomaly) error {
 	err := s.database.SavePaymentAnomaly(ctx, param)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *paymentService) SavePaymentRequests(ctx context.Context, param models.PaymentRequests) error {
+	err := s.database.SavePaymentRequests(ctx, param)
 	if err != nil {
 		return err
 	}
